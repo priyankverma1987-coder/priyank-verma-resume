@@ -228,6 +228,20 @@ kbd { background: var(--bg); border-radius: 0.35em; padding: 0.05em 0.45em; font
 .winner p { margin: 0; font-size: 1.3rem; color: var(--ink-soft); }
 .trophy { font-size: clamp(5rem, 12vw, 11rem); line-height: 1; }
 
+.medal-line { font-family: var(--display); font-size: 1.5rem; background: var(--bg); border-radius: 1rem; padding: 0.4em 0.9em; animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+.medal-line .who { color: var(--yellow); }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } }
+.podium { display: grid; grid-template-columns: repeat(3, minmax(0, 13rem)); gap: clamp(0.4rem, 1.5vw, 1.2rem); align-items: end; justify-content: center; width: 100%; }
+.step { display: grid; gap: 0.5rem; justify-items: center; min-width: 0; }
+.step-icon { font-size: clamp(2.6rem, 6vw, 5.5rem); line-height: 1; }
+.step-name { font-family: var(--display); font-weight: 800; color: var(--on-bright); border-radius: 999px; padding: 0.2em 0.8em; font-size: clamp(1rem, 2.2vw, 2rem); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-block { width: 100%; border-radius: 1rem 1rem 0.3rem 0.3rem; display: grid; place-items: start center; padding-top: 0.5rem; font-family: var(--display); font-weight: 800; font-size: clamp(1.6rem, 3.5vw, 3.2rem); color: var(--on-bright); }
+.step-1st .step-block { height: clamp(7rem, 22vh, 14rem); background: var(--yellow); }
+.step-2nd .step-block { height: clamp(5rem, 15vh, 10rem); background: var(--ink-soft); }
+.step-3rd .step-block { height: clamp(3.5rem, 10vh, 7rem); background: var(--orange); }
+.step-1st .step-icon { animation: bounce-y .8s ease infinite alternate; }
+@keyframes bounce-y { to { transform: translateY(-0.6rem); } }
+@media (prefers-reduced-motion: reduce) { .step-1st .step-icon, .medal-line { animation: none; } }
 .toast {
   position: fixed; left: 50%; bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
   background: var(--yellow); color: var(--on-bright); border-radius: 999px; padding: 0.6em 1.3em; font-weight: 800; z-index: 30;
@@ -291,7 +305,7 @@ kbd { background: var(--bg); border-radius: 0.35em; padding: 0.05em 0.45em; font
       <div class="field" id="playersField">
         <label class="label" for="nameInput">Players <span id="playerCount"></span></label>
         <div class="row">
-          <input class="text-input" id="nameInput" maxlength="16" placeholder="Type a name, press Enter">
+          <input class="text-input" id="nameInput" maxlength="400" placeholder="Type names, e.g. Aarav, Mia, Zoya">
           <button type="button" class="btn icon-btn" id="addName">Add</button>
           <button type="button" class="btn icon-btn" id="clearNames">Clear all</button>
         </div>
@@ -380,7 +394,8 @@ kbd { background: var(--bg); border-radius: 0.35em; padding: 0.05em 0.45em; font
   <!-- WINNER -->
   <section class="winner" id="winner" hidden>
     <div>
-      <div class="trophy" aria-hidden="true">🏆</div>
+      <div class="trophy" id="trophy" aria-hidden="true">🏆</div>
+      <div class="podium" id="podium" hidden></div>
       <h1 id="winTitle">Everyone's a Superstar!</h1>
       <p id="winLine"></p>
       <div class="chips" id="winChips" style="justify-content:center"></div>
@@ -600,7 +615,7 @@ let deck = [];
 let phase = "setup";   // setup | spin | landed | cards | task | winner
 let currentIdx = null;  // index into S.players
 let currentTask = null;
-let rot = 0, spinning = false;
+let rot = 0, spinning = false, outCount = 0;
 let timerHandle = null;
 const persist = () => { store.set("settings", S); store.set("used", [...used]); };
 
@@ -699,16 +714,23 @@ function renderSetup() {
   $("exampleHint").hidden = !S.examples || !S.players.length;
   const ok = !screenStyle || S.players.length >= 2;
   $("startBtn").disabled = !ok;
-  $("startHint").textContent = ok ? (screenStyle ? "Tip: plug a laptop into the TV and press Full screen." : "Spin your real pen, then tap a card on the TV.") : "Add at least 2 players to start.";
+  $("startHint").textContent = !ok ? "Add at least 2 players to start."
+    : !screenStyle ? "Spin your real pen, then tap a card on the TV."
+    : S.after === "out" && S.players.length > 8 ? "With 9 or more players, the last 3 standing get a podium: 3rd, 2nd and the Golden Pen."
+    : S.after === "out" ? "The last player standing gets a big shout-out at the end."
+    : "Tip: plug a laptop into the TV and press Full screen.";
   $("heroLine").textContent = S.star
     ? "Happy Birthday, " + S.star + "! The pen picks a player, the player picks a mystery card, and everyone watches the show."
     : "A birthday party game. The pen picks a player, the player picks a mystery card, and everyone watches the show.";
 }
 function addName() {
-  const v = $("nameInput").value.trim(); if (!v) return;
+  const names = $("nameInput").value.split(/[,;\n]+/).map(n => n.trim()).filter(Boolean); if (!names.length) return;
   if (S.examples) { S.players = []; S.examples = false; }
-  if (S.players.length >= 24) { toast("24 players is the most the circle can fit."); return; }
-  S.players.push({ name: v, done: false }); $("nameInput").value = ""; persist(); renderSetup(); $("nameInput").focus();
+  for (const n of names) {
+    if (S.players.length >= 24) { toast("24 players is the most the circle can fit."); break; }
+    S.players.push({ name: n.slice(0, 16), done: false });
+  }
+  $("nameInput").value = ""; persist(); renderSetup(); $("nameInput").focus();
 }
 $("addName").onclick = addName;
 $("nameInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addName(); } });
@@ -730,7 +752,7 @@ function show(which) {
 }
 function startGame() {
   audio();
-  S.players.forEach(p => p.done = false);
+  S.players.forEach(p => { p.done = false; delete p.out; }); outCount = 0;
   persist(); buildDeck(); updateDeckPill();
   $("modePill").textContent = MODE_NAMES[S.mode];
   $("bdayTag").textContent = S.star ? "Happy Birthday, " + S.star + "!" : "";
@@ -740,11 +762,18 @@ function startGame() {
   if (S.style === "real") { $("side").hidden = true; openCards(); }
   else { $("side").hidden = false; toSpin(); }
 }
-function toSpin() {
+const podiumGame = () => S.after === "out" && S.players.length > 8;
+function medalBanner(c, medal) {
+  if (!medal) return;
+  const m = el("div", "medal-line"); m.append(el("span", "medal", medal.icon), " ", el("span", "who", medal.name), " takes " + medal.place + " place!");
+  c.append(m);
+}
+function toSpin(medal) {
   phase = "spin"; currentIdx = null;
   $("arena").hidden = false; $("cardsView").hidden = true;
   renderArena(); renderDone();
   const c = $("callout"); c.replaceChildren();
+  medalBanner(c, medal);
   const rem = activeIdx().length;
   c.append(el("h3", "", "Who's next?"));
   c.append(el("p", "", rem + " player" + (rem === 1 ? "" : "s") + " in the circle. Spin the pen!"));
@@ -759,11 +788,13 @@ function renderArena() {
   arena.querySelectorAll(".seat").forEach(s => s.remove());
   const idx = activeIdx(); const n = idx.length;
   const size = n > 16 ? 0.85 : n > 10 ? 1 : 1.25;
+  const stagger = n > 12;  // alternate an outer and inner ring so 20 names don't overlap
   idx.forEach((pi, k) => {
     const a = (k / n) * Math.PI * 2;
+    const r = stagger && k % 2 ? 33 : 44;
     const s = el("div", "seat", S.players[pi].name);
-    s.style.left = (50 + 43 * Math.sin(a)) + "%";
-    s.style.top = (50 - 43 * Math.cos(a)) + "%";
+    s.style.left = (50 + r * Math.sin(a)) + "%";
+    s.style.top = (50 - r * Math.cos(a)) + "%";
     s.style.background = playerColor(pi);
     s.style.fontSize = size + "rem";
     s.dataset.slot = k; s.dataset.pi = pi;
@@ -780,7 +811,7 @@ function renderDone() {
   const done = S.players.map((p, i) => [p, i]).filter(([p]) => p.done);
   $("starsBox").hidden = S.after === "in";
   if (!done.length) { box.append(el("span", "hint", "Nobody yet. Who will be first?")); return; }
-  done.forEach(([p, i]) => { const c = el("span", "chip", "⭐ " + p.name); c.style.background = playerColor(i); c.style.paddingRight = "0.85em"; box.append(c); });
+  done.forEach(([p, i]) => { const c = el("span", "chip", "★ " + p.name); c.style.background = playerColor(i); c.style.paddingRight = "0.85em"; box.append(c); });
 }
 
 function spin() {
@@ -821,16 +852,17 @@ function landed(slot, pi) {
   b.focus();
   say(name + ", the pen picked you! Pick a mystery card.");
 }
-function lastStanding(pi) {
+function lastStanding(pi, medal) {
   currentIdx = pi; phase = "landed";
   rot = 0; renderArena(); light(0, "chosen");
   const name = S.players[pi].name;
   const c = $("callout"); c.replaceChildren();
+  medalBanner(c, medal);
   const h = el("h3"); h.append("Last star standing: ", el("span", "who", name), "!");
   c.append(h, el("p", "", "No spin needed. Here comes your grand finale card!"));
   const b = el("button", "btn pink big", "Grand finale card"); b.type = "button"; b.onclick = openCards;
   c.append(b); b.focus();
-  sfx.land(); say(name + ", you are the last star standing! Pick your grand finale card.");
+  sfx.land(); say((medal ? medal.name + " takes " + medal.place + " place! " : "") + name + ", you are the last star standing! Pick your grand finale card.");
 }
 
 function openCards() {
@@ -895,21 +927,46 @@ function finishTask() {
   try { speechSynthesis.cancel(); } catch {}
   sfx.done(); confetti(140);
   if (S.style === "real") { openCards(); return; }
-  if (S.after === "out" && currentIdx != null) S.players[currentIdx].done = true;
+  if (S.after === "out" && currentIdx != null) { S.players[currentIdx].done = true; S.players[currentIdx].out = ++outCount; }
   persist();
   const rem = activeIdx();
   if (S.after === "out" && rem.length === 0) return winner();
-  if (S.after === "out" && rem.length === 1) { $("arena").hidden = false; $("cardsView").hidden = true; renderDone(); return lastStanding(rem[0]); }
-  toSpin();
+  let medal = null;
+  if (podiumGame() && currentIdx != null && rem.length <= 2) {
+    medal = rem.length === 2 ? { icon: "🥉", place: "3rd", name: S.players[currentIdx].name } : { icon: "🥈", place: "2nd", name: S.players[currentIdx].name };
+    sfx.win(); confetti(200);
+  }
+  if (S.after === "out" && rem.length === 1) { $("arena").hidden = false; $("cardsView").hidden = true; renderDone(); return lastStanding(rem[0], medal); }
+  toSpin(medal);
+  if (medal) say(medal.name + " takes " + medal.place + " place!");
 }
 function winner() {
   phase = "winner"; show("winner");
-  $("winTitle").textContent = "Everyone's a Superstar!";
-  $("winLine").textContent = S.star ? "Happy Birthday, " + S.star + "! What a show." : "What a show. Big round of applause!";
+  const ranked = S.players.map((p, i) => [p, i]).filter(([p]) => p.out).sort((a, b) => b[0].out - a[0].out);
+  const champ = ranked[0];
+  const pod = $("podium"); pod.replaceChildren();
+  const usePodium = podiumGame() && ranked.length >= 3;
+  pod.hidden = !usePodium; $("trophy").hidden = usePodium;
+  if (usePodium) {
+    [[1, "🥈", "2nd"], [0, "🏆", "1st"], [2, "🥉", "3rd"]].forEach(([r, icon, place]) => {
+      const [p, i] = ranked[r];
+      const col = el("div", "step step-" + place);
+      col.append(el("div", "step-icon", icon));
+      const nm = el("div", "step-name", p.name); nm.style.background = playerColor(i);
+      col.append(nm);
+      const block = el("div", "step-block", place); col.append(block);
+      pod.append(col);
+    });
+    $("winTitle").textContent = champ[0].name + " wins the Golden Pen!";
+  } else {
+    $("winTitle").textContent = champ ? "Shout-out to " + champ[0].name + "!" : "Everyone's a Superstar!";
+  }
+  $("winLine").textContent = (champ ? champ[0].name + " was the last star standing. " : "") + (S.star ? "Happy Birthday, " + S.star + "! " : "") + "And everyone below is a Superstar:";
   const w = $("winChips"); w.replaceChildren();
-  S.players.forEach((p, i) => { const c = el("span", "chip", "⭐ " + p.name); c.style.background = playerColor(i); c.style.paddingRight = "0.85em"; w.append(c); });
+  S.players.forEach((p, i) => { const c = el("span", "chip", "★ " + p.name); c.style.background = playerColor(i); c.style.paddingRight = "0.85em"; w.append(c); });
   sfx.win(); confetti(300); setTimeout(() => confetti(200), 900);
-  say(S.star ? "Happy birthday " + S.star + "! Everyone is a superstar!" : "Everyone is a superstar!");
+  say((usePodium ? "In third place, " + ranked[2][0].name + ". In second place, " + ranked[1][0].name + ". And the winner of the Golden Pen is " + champ[0].name + "! "
+    : champ ? "Big shout-out to " + champ[0].name + ", the last star standing! " : "") + (S.star ? "Happy birthday " + S.star + "! " : "") + "Everyone is a superstar!");
   $("againBtn").focus();
 }
 $("againBtn").onclick = startGame;
