@@ -596,8 +596,9 @@ const TASKS = {
 const POOLS = { kids: ["kids"], family: ["kids", "family"], grown: ["grown"] };
 const MODE_NAMES = { kids: "Kids", family: "Family mix", grown: "Grown-ups" };
 const ALL = {};
-for (const k of Object.keys(TASKS)) TASKS[k].forEach((t, i) => { const [e, x] = t.split("|"); ALL[k + i] = { id: k + i, emoji: e, text: x }; });
-const poolIds = m => POOLS[m].flatMap(k => TASKS[k].map((_, i) => k + i));
+const CARD_SET = "v3-";  // bump when the card list is rewritten so old "already played" memory doesn't skip new cards
+for (const k of Object.keys(TASKS)) TASKS[k].forEach((t, i) => { const [e, x] = t.split("|"); ALL[CARD_SET + k + i] = { id: CARD_SET + k + i, emoji: e, text: x }; });
+const poolIds = m => POOLS[m].flatMap(k => TASKS[k].map((_, i) => CARD_SET + k + i));
 const COLORS = ["var(--pink)", "var(--yellow)", "var(--mint)", "var(--sky)", "var(--orange)"];
 const EXAMPLES = ["Aarav", "Mia", "Zoya", "Kabir", "Anaya", "Vihaan", "Mum", "Dad"];
 
@@ -616,7 +617,7 @@ let nextId = 1;
 function mkPlayer(name) { const id = nextId++; return { id, name, c: id - 1, done: false }; }
 if (!Array.isArray(S.players)) S.players = EXAMPLES.map(mkPlayer);
 S.players.forEach(p => { if (!p.id) p.id = nextId; nextId = Math.max(nextId, p.id + 1); if (p.c == null) p.c = p.id - 1; });
-let used = new Set(store.get("used", []));
+let used = new Set(store.get("used", []).filter(id => id in ALL));
 let deck = [];
 let phase = "setup";   // setup | spin | spinning | landed | cards | task | winner
 let cur = null;        // player whose turn it is
