@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}</style>
+</head>
+<body>
+<title>Spin the Pen Party</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@600;800&display=swap">
+<style>
+/* Layout: one-screen TV game. Setup → arena (pen in a circle of names) → mystery-card grid → task reveal.
+   Single deliberate look: midnight-teal party room with birthday-sprinkle colours. */
+:root {
+  color-scheme: dark;
+  --bg: #0d2730;
+  --bg-2: #123441;
+  --panel: #173f4e;
+  --line: #2a5868;
+  --ink: #fff4e3;
+  --ink-soft: #b9d3d6;
+  --pink: #ff6fa8;
+  --yellow: #ffd23f;
+  --mint: #3ee6b5;
+  --sky: #4cc3ff;
+  --orange: #ff8a3d;
+  --on-bright: #10232a;
+  --display: "Baloo 2", "Trebuchet MS", "Arial Rounded MT Bold", sans-serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(16px, 0.95vw + 0.55vh, 30px);
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 12% 18%, var(--bg-2) 0 22%, transparent 23%),
+    radial-gradient(circle at 88% 82%, var(--bg-2) 0 18%, transparent 19%);
+  color: var(--ink);
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.45;
+  overflow-x: hidden;
+}
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 0.22rem solid var(--yellow); outline-offset: 0.18rem; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; line-height: 1.05; margin: 0; text-wrap: balance; }
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 1rem;
+  gap: 1rem;
+  max-width: 120rem;
+  margin: 0 auto;
+}
+
+/* ---------- shared bits ---------- */
+.btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7em 1.4em;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 0.12rem var(--line);
+  transition: transform .12s ease, filter .12s ease;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:active { transform: scale(.96); }
+.btn.big { font-size: 1.6rem; padding: 0.6em 1.8em; }
+.btn.go { background: var(--yellow); color: var(--on-bright); box-shadow: 0 0.3rem 0 #b8901a; }
+.btn.pink { background: var(--pink); color: var(--on-bright); box-shadow: 0 0.3rem 0 #b9416f; }
+.btn.mint { background: var(--mint); color: var(--on-bright); box-shadow: 0 0.3rem 0 #1f9d78; }
+.btn[disabled] { opacity: .45; cursor: default; filter: none; transform: none; }
+.icon-btn { padding: 0.45em 0.9em; font-size: 0.95rem; }
+.label { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); font-weight: 800; }
+.sprinkle {
+  display: inline-block; width: 0.9em; height: 0.28em; border-radius: 1em; vertical-align: middle;
+}
+
+/* ---------- setup ---------- */
+.setup { display: grid; gap: 1.4rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; }
+.hero { display: grid; gap: 1rem; padding-top: 1rem; }
+.hero h1 { font-size: clamp(3rem, 6vw, 6.5rem); letter-spacing: -0.01em; }
+.hero h1 .pen-word { color: var(--yellow); display: inline-block; transform: rotate(-4deg); }
+.hero p { margin: 0; max-width: 32ch; color: var(--ink-soft); font-size: 1.1rem; }
+.hero .how { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.hero .how li { display: flex; gap: 0.7rem; align-items: baseline; }
+.hero .how b { font-family: var(--display); color: var(--mint); font-size: 1.2rem; min-width: 1.2em; }
+.sprinkles { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.panel { background: var(--panel); border-radius: 1.4rem; padding: 1.3rem; display: grid; gap: 1.2rem; min-width: 0; }
+.field { display: grid; gap: 0.5rem; min-width: 0; }
+.text-input {
+  background: var(--bg); border: 0.12rem solid var(--line); border-radius: 0.8rem;
+  padding: 0.55em 0.8em; font-size: 1.05rem; min-width: 0; width: 100%;
+}
+.text-input:focus { border-color: var(--yellow); outline: none; }
+.choices { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
+.choice {
+  border: 0.15rem solid var(--line); background: var(--bg); border-radius: 1rem; padding: 0.7rem 0.85rem;
+  text-align: left; display: grid; gap: 0.15rem; min-width: 0;
+}
+.choice strong { font-family: var(--display); font-size: 1.15rem; line-height: 1.1; }
+.choice span { font-size: 0.82rem; color: var(--ink-soft); }
+.choice[aria-pressed="true"] { border-color: var(--yellow); background: var(--bg-2); box-shadow: 0 0 0 0.12rem var(--yellow); }
+.choice[aria-pressed="true"] strong { color: var(--yellow); }
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.row > .text-input { flex: 1 1 10rem; }
+.chips { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.25em 0.4em 0.25em 0.85em;
+  color: var(--on-bright); font-weight: 800;
+}
+.chip button { border: 0; background: rgba(0,0,0,.18); border-radius: 50%; width: 1.5em; height: 1.5em; line-height: 1; padding: 0; }
+.hint { font-size: 0.85rem; color: var(--ink-soft); margin: 0; }
+.toggles { display: grid; gap: 0.7rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.seg { display: inline-flex; background: var(--bg); border-radius: 999px; padding: 0.2rem; gap: 0.2rem; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; border-radius: 999px; padding: 0.35em 0.85em; font-weight: 800; font-size: 0.9rem; }
+.seg button[aria-pressed="true"] { background: var(--mint); color: var(--on-bright); }
+.start-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+
+/* ---------- game ---------- */
+.topbar { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+.topbar h2 { font-size: 1.6rem; margin-right: auto; }
+.topbar h2 small { font-family: var(--body); font-size: 0.95rem; color: var(--pink); font-weight: 800; margin-left: 0.5rem; }
+.pill { background: var(--panel); border-radius: 999px; padding: 0.3em 0.9em; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+
+.game { flex: 1; display: grid; gap: 1.2rem; grid-template-columns: minmax(0, 1fr) minmax(15rem, 24rem); align-items: center; }
+.stage { display: grid; place-items: center; min-width: 0; }
+.arena {
+  position: relative;
+  width: min(74vh, 92vw, 52rem);
+  aspect-ratio: 1;
+  max-width: 100%;
+}
+.arena::before {
+  content: ""; position: absolute; inset: 14%; border-radius: 50%;
+  background: repeating-conic-gradient(var(--bg-2) 0 15deg, var(--panel) 15deg 30deg);
+  box-shadow: 0 0 0 0.5rem var(--line);
+}
+.pen { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; will-change: transform; }
+.pen svg { height: 62%; width: auto; filter: drop-shadow(0 0.6rem 0.6rem rgba(0,0,0,.35)); }
+.hub { position: absolute; left: 50%; top: 50%; width: 9%; aspect-ratio: 1; transform: translate(-50%,-50%); border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 0.35rem var(--pink); }
+.seat {
+  position: absolute; transform: translate(-50%, -50%);
+  padding: 0.25em 0.75em; border-radius: 999px; font-family: var(--display); font-weight: 800;
+  color: var(--on-bright); white-space: nowrap; max-width: 30%; overflow: hidden; text-overflow: ellipsis;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.seat.lit { transform: translate(-50%, -50%) scale(1.22); box-shadow: 0 0 0 0.25rem var(--ink); }
+.seat.chosen { animation: bounce .6s ease infinite alternate; box-shadow: 0 0 0 0.3rem var(--ink), 0 0 2rem var(--yellow); }
+@keyframes bounce { to { transform: translate(-50%, -50%) scale(1.35); } }
+
+.game:has(.side[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.side { display: grid; gap: 1rem; min-width: 0; }
+.callout { background: var(--panel); border-radius: 1.4rem; padding: 1.2rem; display: grid; gap: 0.8rem; text-align: center; justify-items: center; }
+.callout h3 { font-size: 2.1rem; }
+.callout h3 .who { color: var(--yellow); }
+.callout p { margin: 0; color: var(--ink-soft); }
+.keys { font-size: 0.8rem; color: var(--ink-soft); }
+kbd { background: var(--bg); border-radius: 0.35em; padding: 0.05em 0.45em; font-family: var(--body); border: 0.08rem solid var(--line); }
+.stars { display: grid; gap: 0.5rem; }
+.stars .chips .chip { font-size: 0.9rem; }
+
+/* cards */
+.cards-view { display: grid; gap: 1rem; justify-items: center; width: 100%; }
+.cards-view h3 { font-size: clamp(2rem, 3.6vw, 3.4rem); text-align: center; }
+.cards-view h3 .who { color: var(--yellow); }
+.grid {
+  display: grid; gap: clamp(0.5rem, 1.2vw, 1.2rem);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  width: min(100%, 64rem);
+}
+.card {
+  aspect-ratio: 3 / 4; border: 0; border-radius: 1.1rem; color: var(--on-bright);
+  font-family: var(--display); font-weight: 800; font-size: clamp(2.4rem, 5vw, 5rem);
+  display: grid; place-items: center; position: relative; overflow: hidden;
+  box-shadow: 0 0.35rem 0 rgba(0,0,0,.3);
+  transition: transform .15s ease;
+}
+.card::after {
+  content: ""; position: absolute; inset: 0.45rem; border: 0.18rem dashed rgba(16,35,42,.35); border-radius: 0.8rem;
+}
+.card:hover, .card:focus-visible { transform: translateY(-0.3rem) rotate(-2deg); }
+.card.flipping { animation: pick .45s ease forwards; }
+@keyframes pick { to { transform: scale(1.25) rotateY(90deg); opacity: 0; } }
+
+/* reveal */
+.overlay {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+  background: rgba(6, 20, 25, .82);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.reveal {
+  width: min(100%, 60rem); background: var(--ink); color: var(--on-bright); border-radius: 2rem;
+  padding: clamp(1.2rem, 3vw, 2.8rem); display: grid; gap: 1rem; justify-items: center; text-align: center;
+  animation: flipin .5s cubic-bezier(.2,1.4,.4,1);
+  max-height: 100%; overflow: auto;
+}
+@keyframes flipin { from { transform: rotateY(90deg) scale(.8); } to { transform: none; } }
+.reveal .for { font-family: var(--display); font-size: 1.5rem; color: #b9416f; }
+.reveal .emoji { font-size: clamp(4rem, 10vw, 9rem); line-height: 1; }
+.reveal .task { font-family: var(--display); font-size: clamp(1.9rem, 4.2vw, 4rem); line-height: 1.1; max-width: 22ch; }
+.reveal .buddy { background: var(--mint); border-radius: 999px; padding: 0.3em 1em; font-weight: 800; }
+.reveal .btn { box-shadow: inset 0 0 0 0.15rem rgba(16,35,42,.25); background: #f1e3cc; color: var(--on-bright); }
+.reveal .btn.go { background: var(--yellow); box-shadow: 0 0.3rem 0 #b8901a; }
+.reveal .row { justify-content: center; }
+.timer { width: min(100%, 30rem); height: 1.1rem; background: #f1e3cc; border-radius: 999px; overflow: hidden; }
+.timer i { display: block; height: 100%; width: 100%; background: var(--pink); transform-origin: left; }
+.timer-num { font-family: var(--display); font-size: 2.2rem; font-variant-numeric: tabular-nums; }
+
+/* winner */
+.winner { flex: 1; display: grid; place-items: center; text-align: center; }
+.winner > div { display: grid; gap: 1.2rem; justify-items: center; }
+.winner h1 { font-size: clamp(3rem, 7vw, 7rem); color: var(--yellow); }
+.winner p { margin: 0; font-size: 1.3rem; color: var(--ink-soft); }
+.trophy { font-size: clamp(5rem, 12vw, 11rem); line-height: 1; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--yellow); color: var(--on-bright); border-radius: 999px; padding: 0.6em 1.3em; font-weight: 800; z-index: 30;
+  max-width: calc(100% - 32px); text-align: center;
+}
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 25; width: 100%; height: 100%; }
+
+@media (max-width: 900px) {
+  .setup, .game { grid-template-columns: minmax(0, 1fr); }
+  .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .arena { width: min(92vw, 34rem); }
+}
+@media (max-width: 480px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .seat { font-size: 0.8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seat.chosen, .reveal, .card.flipping { animation: none; }
+}
+</style>
+
+<div class="app">
+  <!-- SETUP -->
+  <section id="setup" class="setup" aria-label="Game setup">
+    <div class="hero">
+      <div class="sprinkles" aria-hidden="true">
+        <span class="sprinkle" style="background:var(--pink)"></span><span class="sprinkle" style="background:var(--yellow)"></span><span class="sprinkle" style="background:var(--mint)"></span><span class="sprinkle" style="background:var(--sky)"></span><span class="sprinkle" style="background:var(--orange)"></span>
+      </div>
+      <h1>Spin the <span class="pen-word">Pen!</span></h1>
+      <p id="heroLine">A birthday party game. The pen picks a player, the player picks a mystery card, and everyone watches the show.</p>
+      <ol class="how">
+        <li><b>1</b><span>Spin the pen on the TV (or a real pen on the floor).</span></li>
+        <li><b>2</b><span>Whoever the tip points at picks a <strong>?</strong> card.</span></li>
+        <li><b>3</b><span>Do the task, take a bow, and become a Superstar.</span></li>
+      </ol>
+    </div>
+
+    <form class="panel" id="setupForm" autocomplete="off">
+      <div class="field">
+        <label class="label" for="starInput">Birthday star</label>
+        <input class="text-input" id="starInput" maxlength="24" placeholder="Name of the birthday child">
+      </div>
+
+      <div class="field">
+        <span class="label">Mode</span>
+        <div class="choices" id="modeChoices">
+          <button type="button" class="choice" data-mode="kids"><strong>Kids</strong><span>Ages 4 to 12 · <b data-count="kids"></b> cards</span></button>
+          <button type="button" class="choice" data-mode="family"><strong>Family mix</strong><span>Kids + parents · <b data-count="family"></b> cards</span></button>
+          <button type="button" class="choice" data-mode="grown"><strong>Grown-ups</strong><span>Parents only · <b data-count="grown"></b> cards</span></button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label">Which pen?</span>
+        <div class="choices" id="styleChoices">
+          <button type="button" class="choice" data-style="screen"><strong>Pen on the TV</strong><span>Type names, the TV spins and picks</span></button>
+          <button type="button" class="choice" data-style="real"><strong>Real pen</strong><span>Spin a pen on the floor, use the TV for cards</span></button>
+        </div>
+      </div>
+
+      <div class="field" id="playersField">
+        <label class="label" for="nameInput">Players <span id="playerCount"></span></label>
+        <div class="row">
+          <input class="text-input" id="nameInput" maxlength="16" placeholder="Type a name, press Enter">
+          <button type="button" class="btn icon-btn" id="addName">Add</button>
+          <button type="button" class="btn icon-btn" id="clearNames">Clear all</button>
+        </div>
+        <div class="chips" id="chips"></div>
+        <p class="hint" id="exampleHint">These are example names. Clear them and add your guests.</p>
+      </div>
+
+      <div class="toggles">
+        <div class="field" id="afterField">
+          <span class="label">After their turn</span>
+          <div class="seg" id="afterSeg">
+            <button type="button" data-after="out">Sit out</button>
+            <button type="button" data-after="in">Stay in</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Read cards aloud</span>
+          <div class="seg" id="speakSeg">
+            <button type="button" data-speak="on">On</button>
+            <button type="button" data-speak="off">Off</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Task timer</span>
+          <div class="seg" id="timerSeg">
+            <button type="button" data-timer="0">Off</button>
+            <button type="button" data-timer="15">15s</button>
+            <button type="button" data-timer="30">30s</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="start-row">
+        <p class="hint" id="startHint"></p>
+        <button type="submit" class="btn go big" id="startBtn">Let's play!</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" hidden aria-label="Game">
+    <div class="topbar">
+      <h2>Spin the Pen <small id="bdayTag"></small></h2>
+      <span class="pill" id="modePill"></span>
+      <span class="pill" id="deckPill"></span>
+      <button class="btn icon-btn" id="soundBtn" type="button">Sound on</button>
+      <button class="btn icon-btn" id="fsBtn" type="button">Full screen</button>
+      <button class="btn icon-btn" id="setupBtn" type="button">Setup</button>
+    </div>
+  </section>
+
+  <div class="game" id="playArea" hidden>
+    <div class="stage">
+      <div class="arena" id="arena">
+        <div class="pen" id="pen">
+          <svg viewBox="0 0 60 400" aria-hidden="true">
+            <polygon points="30,0 18,58 42,58" fill="#10232a"/>
+            <polygon points="30,8 22,52 38,52" fill="#ffd23f"/>
+            <rect x="16" y="56" width="28" height="22" rx="3" fill="#b9d3d6"/>
+            <rect x="14" y="76" width="32" height="250" rx="8" fill="#ff6fa8"/>
+            <rect x="14" y="110" width="32" height="14" fill="#ffd23f"/>
+            <rect x="14" y="140" width="32" height="14" fill="#3ee6b5"/>
+            <rect x="14" y="170" width="32" height="14" fill="#4cc3ff"/>
+            <rect x="14" y="320" width="32" height="64" rx="10" fill="#ff8a3d"/>
+            <rect x="40" y="300" width="8" height="70" rx="4" fill="#fff4e3"/>
+          </svg>
+        </div>
+        <div class="hub" aria-hidden="true"></div>
+      </div>
+      <div class="cards-view" id="cardsView" hidden>
+        <h3 id="cardsTitle"></h3>
+        <div class="grid" id="grid"></div>
+        <p class="keys" id="cardsKeys">Tap a card, or use the arrow keys and <kbd>Enter</kbd>.</p>
+      </div>
+    </div>
+
+    <aside class="side" id="side">
+      <div class="callout" id="callout" aria-live="polite"></div>
+      <div class="stars panel" id="starsBox">
+        <span class="label">Superstars (done)</span>
+        <div class="chips" id="doneChips"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- WINNER -->
+  <section class="winner" id="winner" hidden>
+    <div>
+      <div class="trophy" aria-hidden="true">🏆</div>
+      <h1 id="winTitle">Everyone's a Superstar!</h1>
+      <p id="winLine"></p>
+      <div class="chips" id="winChips" style="justify-content:center"></div>
+      <div class="row" style="justify-content:center">
+        <button class="btn go big" id="againBtn" type="button">Play again</button>
+        <button class="btn" id="winSetupBtn" type="button">Change players</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="reveal" role="dialog" aria-modal="true" aria-labelledby="taskText">
+    <div class="for" id="taskFor"></div>
+    <div class="emoji" id="taskEmoji" aria-hidden="true"></div>
+    <div class="task" id="taskText"></div>
+    <div class="buddy" id="buddyTag" hidden>Bring a buddy! Pick someone to do it with you.</div>
+    <div id="timerBox" hidden style="display:grid;gap:.4rem;justify-items:center;width:100%">
+      <div class="timer-num" id="timerNum"></div>
+      <div class="timer"><i id="timerBar"></i></div>
+    </div>
+    <div class="row">
+      <button class="btn go big" id="doneBtn" type="button">Done! Take a bow</button>
+    </div>
+    <div class="row">
+      <button class="btn icon-btn" id="timerBtn" type="button">Start timer</button>
+      <button class="btn icon-btn" id="buddyBtn" type="button">Bring a buddy</button>
+      <button class="btn icon-btn" id="readBtn" type="button">Read it again</button>
+      <button class="btn icon-btn" id="swapBtn" type="button">Too tricky? New card</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<canvas id="confetti"></canvas>
+
+<script>
+/* ================= TASK CARDS ================= */
+const TASKS = {
+  kids: [
+    "🐸|Jump like a frog 5 times and say “ribbit” every time!",
+    "👽|Do the Dame Tu Cosita alien dance for 10 seconds!",
+    "🐵|Act like a monkey looking for bananas.",
+    "🐧|Waddle like a penguin across the room and back.",
+    "🦁|Roar like a lion. Your biggest, loudest roar!",
+    "🤖|Walk and talk like a robot: “I. AM. A. ROBOT.”",
+    "🐍|Hiss like a snake and slither along the floor.",
+    "🦩|Stand on one leg like a flamingo while everyone counts to 10.",
+    "🐰|Hop like a bunny all the way around the circle.",
+    "🐘|Make an elephant trunk with your arm and trumpet loudly!",
+    "🧊|Freeze like a statue! No moving while everyone counts to 10.",
+    "🐭|Sing “Happy Birthday” in a tiny mouse voice.",
+    "🦖|Stomp like a dinosaur and do a giant dino roar.",
+    "🤪|Make the silliest face you can and hold it for 5 seconds!",
+    "🐔|Flap your wings and cluck like a chicken.",
+    "🐶|Bark like a puppy and wag your tail.",
+    "🐱|Meow like a kitten and ask for a bowl of milk.",
+    "💃|Dance like nobody is watching for 10 seconds!",
+    "🦸|Show us your best superhero pose, then fly around the room!",
+    "🧟|Walk like a sleepy zombie: “Braaains… and cake!”",
+    "👑|Walk like a king or queen and wave to your people.",
+    "🙌|Give the birthday star the biggest high five ever!",
+    "🎈|Pretend to blow up a giant balloon until it goes POP!",
+    "🍦|Pretend to eat an ice cream that is melting super fast.",
+    "🦘|Bounce like a kangaroo 5 times.",
+    "🐌|Move like a super slow snail to the next person.",
+    "🚂|Be a train! Choo-choo all the way around the circle.",
+    "🚀|Count down from 5 and blast off like a rocket!",
+    "🦆|Quack like a duck and waddle in a circle.",
+    "🧦|Pretend you just smelled the stinkiest sock in the world.",
+    "😂|Make someone laugh without touching them!",
+    "🍌|Say “banana” in 3 different funny voices.",
+    "🐙|Wiggle like an octopus with 8 wobbly arms.",
+    "🦋|Flutter like a butterfly around the room.",
+    "🥁|Drum a beat on your tummy. Everyone copies you!",
+    "🐓|Wake everyone up like a rooster: cock-a-doodle-doo!",
+    "🎅|Laugh like Santa Claus: Ho! Ho! Ho!",
+    "🦉|Hoot like an owl and turn your head very slowly.",
+    "🍝|Be spaghetti cooking in a pot: start stiff, then go all wiggly!",
+    "🌋|Be a volcano: rumble… rumble… ERUPT!",
+    "🐢|Pretend to be a turtle hiding in its shell, then peek out.",
+    "🦈|Swim like a shark and sing a bit of Baby Shark.",
+    "👻|Be a friendly ghost and say “Boo!” to someone.",
+    "⭐|Do 5 star jumps!",
+    "🕷️|Crawl like a spider across the floor.",
+    "🧙|Cast a magic spell that freezes everyone. Then unfreeze them!",
+    "🪞|Copy cat! Everyone must copy what you do for 10 seconds.",
+    "🏏|Pretend to hit a SIX in cricket and celebrate like a champion!",
+    "🎬|Do a Bollywood hero or heroine entry in slow motion!",
+    "🔴|Name 3 things that are red.",
+    "🦒|Stretch tall like a giraffe, then shrink small like a mouse.",
+    "🐊|Make crocodile jaws with your arms and SNAP!",
+    "🎂|Pretend to blow out 100 birthday candles.",
+    "🧸|Be a teddy bear that slowly comes to life.",
+    "🐝|Buzz like a bee and pretend to collect honey from 3 flowers.",
+    "🍋|Pretend to eat a super sour lemon.",
+    "🥷|Sneak like a ninja across the room without a single sound.",
+    "🎸|Play air guitar like a rock star!",
+    "🐄|Moo like a cow 3 times, louder every time.",
+    "🦄|Gallop like a unicorn and show off your magic horn.",
+    "🍕|Pretend to cook a pizza and serve it to the birthday star.",
+    "🐠|Make fish lips and swim around the circle.",
+    "🏃|Run on the spot super fast, then in super slow motion.",
+    "💖|Tell everyone your favourite thing about the birthday star.",
+    "🐼|Be a sleepy panda munching bamboo.",
+    "🎉|Lead a cheer for the birthday star: Hip hip… HOORAY!",
+    "🐒|Do a monkey dance and scratch your head and tummy.",
+    "🌧️|Be the rain! Pitter-patter your fingers, then make a big THUNDER clap.",
+    "🦀|Walk sideways like a crab back to your seat.",
+    "🎤|Sing your favourite song for 10 seconds like a pop star.",
+    "🐺|Howl like a wolf at the moon: Aa-woooo!",
+    "🫧|Pretend to blow bubbles and pop them all around the room."
+  ],
+  family: [
+    "🐔|Pick a grown-up. You both do the chicken dance together!",
+    "🕺|Teach a grown-up your best dance move. They must copy it.",
+    "🪞|Pick a partner and play mirror: copy each other's moves for 10 seconds.",
+    "🦁|Pick a grown-up. They must roar like a lion for you!",
+    "🎶|Make up a one-line birthday song for the birthday star.",
+    "👀|Staring contest with anyone you pick. First to laugh loses!",
+    "👍|Thumb war with the person sitting next to you.",
+    "✊|Rock-paper-scissors with a grown-up. Best of 3!",
+    "🐸|Pick a grown-up to do 5 frog jumps with you.",
+    "🎙️|Be a TV reporter: ask the birthday star 2 questions.",
+    "👽|Choose someone to do the Dame Tu Cosita dance with you.",
+    "🧑‍🏫|Play Simon Says with everyone for 30 seconds. You are Simon!",
+    "🙊|Act out an animal with no sounds. Everyone guesses!",
+    "📞|Whisper a silly sentence to your neighbour and pass it around the circle.",
+    "👅|Pick a grown-up to say “She sells seashells by the seashore” 3 times fast.",
+    "🌊|Start a Mexican wave that goes all the way around the circle.",
+    "📖|Pick a parent to tell a funny story from when they were little.",
+    "✋|High-five everyone in the circle in 10 seconds!",
+    "🔥|Pick two people for a dance-off. Everyone votes with claps!",
+    "🎭|Ask a grown-up to sing a nursery rhyme like an opera singer.",
+    "📸|Pick a silly pose. Everyone does it for a group photo!",
+    "🦀|Pick a grown-up and race like crabs across the room.",
+    "📏|Be the teacher! Give everyone 3 funny instructions to follow.",
+    "🐘|Pick a grown-up to walk like an elephant and trumpet with you.",
+    "🤫|Pick a grown-up. Try to make them laugh in 10 seconds!",
+    "🧍|Everyone freeze-dances while you hum a song. Stop humming and they freeze!"
+  ],
+  grown: [
+    "🎬|Do a Bollywood hero or heroine entry with a slow-motion hair flip.",
+    "🎵|Sing the chorus of a song using only “la la la”. Everyone guesses it.",
+    "📼|Show us your best 90s dance move.",
+    "📺|Report on this birthday party like a dramatic news anchor.",
+    "🕵️|Do a kind impression of someone in the room. Everyone guesses who!",
+    "🍰|Present the birthday cake like a TV cooking-show host.",
+    "🦓|Narrate the room like a nature documentary.",
+    "🔤|Say the alphabet backwards from M to A.",
+    "💌|Tell how you met your partner or best friend in 3 sentences.",
+    "👠|Walk the ramp across the room like a supermodel.",
+    "🎤|Do 15 seconds of stand-up comedy.",
+    "🎞️|Dumb charades: act out a movie title. No talking!",
+    "👅|Say “red lorry, yellow lorry” 5 times fast.",
+    "👽|Do the full Dame Tu Cosita alien dance. Total commitment!",
+    "💃|Do the Macarena, start to finish.",
+    "🏆|Give an award speech for “Best Party Guest of the Year”.",
+    "❓|Speak only in questions for 30 seconds.",
+    "👃|Hum a song while pinching your nose. Others guess it.",
+    "😈|Give us your best villain laugh.",
+    "💪|Hold a plank for 20 seconds while telling a joke.",
+    "💥|Act out a slow-motion action-movie scene.",
+    "🖊️|Sell this pen to the group like a TV shopping host.",
+    "🧘|Strike a yoga pose and give it a ridiculous name.",
+    "😳|Share an embarrassing (but kid-friendly) moment.",
+    "🐾|Let the kids pick an animal. Act it out for 15 seconds!",
+    "🏏|Commentate the last ball of a cricket World Cup final.",
+    "💍|Show us your wedding dance step.",
+    "🎭|Sing “Happy Birthday” like an opera singer.",
+    "🧹|Be a robot vacuum cleaner bumping around the room.",
+    "🎸|Play a 10-second air-guitar solo with full rock-star face.",
+    "🌏|Talk in a different accent for 30 seconds.",
+    "🌙|Moonwalk across the room (or give it a brave try).",
+    "⏰|Mime getting ready for office in 15 seconds flat.",
+    "📦|Pretend you're trapped inside an invisible box.",
+    "⛅|Give the weather forecast for this party.",
+    "🐭|Name 5 cartoon characters in 10 seconds.",
+    "🎥|Recreate a famous movie dialogue. Bollywood welcome!",
+    "🐔|Do the chicken dance with full flapping.",
+    "🥄|Balance the pen on your finger for 5 seconds.",
+    "🕰️|Waltz gracefully with an invisible partner.",
+    "🤘|Sing a lullaby in a heavy-metal voice.",
+    "🧵|Do the floss dance for 10 seconds.",
+    "😭|Be a toddler having a tantrum because the cake is finished.",
+    "🎩|Be a posh waiter taking orders from 3 kids.",
+    "📝|Make your “I just saw my exam results” face.",
+    "⭐|Name 3 favourite things of the birthday star. They confirm!",
+    "🍌|Slip on an imaginary banana peel in dramatic slow motion.",
+    "📣|Give a motivational speech to the birthday cake.",
+    "😁|Do a toothpaste ad with the biggest smile you've got.",
+    "🎧|Freestyle rap 4 lines about the birthday star.",
+    "👯|Copy the dance move of a kid of your choice.",
+    "🦸|Introduce yourself as a superhero: your name, power and weakness."
+  ]
+};
+const POOLS = { kids: ["kids"], family: ["kids", "family"], grown: ["grown"] };
+const MODE_NAMES = { kids: "Kids", family: "Family mix", grown: "Grown-ups" };
+const ALL = {};
+for (const k of Object.keys(TASKS)) TASKS[k].forEach((t, i) => { const [e, x] = t.split("|"); ALL[k + i] = { id: k + i, emoji: e, text: x }; });
+const poolIds = m => POOLS[m].flatMap(k => TASKS[k].map((_, i) => k + i));
+const COLORS = ["var(--pink)", "var(--yellow)", "var(--mint)", "var(--sky)", "var(--orange)"];
+const EXAMPLES = ["Aarav", "Mia", "Zoya", "Kabir", "Anaya", "Vihaan", "Mum", "Dad"];
+
+/* ================= STATE ================= */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("spinpen." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("spinpen." + k, JSON.stringify(v)); } catch {} }
+};
+const saved = store.get("settings", null);
+const S = Object.assign({
+  mode: "kids", style: "screen", after: "out", speak: true, timer: 0, star: "",
+  players: EXAMPLES.map(n => ({ name: n, done: false })), examples: true, muted: false
+}, saved || {});
+let used = new Set(store.get("used", []));
+let deck = [];
+let phase = "setup";   // setup | spin | landed | cards | task | winner
+let currentIdx = null;  // index into S.players
+let currentTask = null;
+let rot = 0, spinning = false;
+let timerHandle = null;
+const persist = () => { store.set("settings", S); store.set("used", [...used]); };
+
+const $ = id => document.getElementById(id);
+
+/* ================= DECK (no repeats) ================= */
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function buildDeck() { deck = shuffle(poolIds(S.mode).filter(id => !used.has(id))); }
+function drawTask() {
+  if (!deck.length) buildDeck();
+  if (!deck.length) {
+    poolIds(S.mode).forEach(id => used.delete(id));
+    buildDeck();
+    toast("Every card has been played! Shuffling a fresh deck.");
+  }
+  const id = deck.pop();
+  used.add(id); persist(); updateDeckPill();
+  return ALL[id];
+}
+function updateDeckPill() { $("deckPill").textContent = deck.length + " of " + poolIds(S.mode).length + " cards left"; }
+
+/* ================= SOUND & VOICE ================= */
+let ac = null;
+function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { ac = null; } } if (ac && ac.state === "suspended") ac.resume(); return ac; }
+function tone(freq, start, dur, type = "square", vol = 0.08) {
+  if (S.muted) return; const c = audio(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq; o.connect(g); g.connect(c.destination);
+  const t = c.currentTime + start;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  tick: () => tone(1100, 0, 0.04, "square", 0.05),
+  land: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.22, "triangle", 0.12)),
+  flip: () => [392, 587, 880].forEach((f, i) => tone(f, i * 0.06, 0.18, "sine", 0.12)),
+  done: () => [659, 784, 988, 1319].forEach((f, i) => tone(f, i * 0.08, 0.25, "triangle", 0.12)),
+  buzz: () => tone(160, 0, 0.5, "sawtooth", 0.08),
+  win: () => [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.13, 0.3, "triangle", 0.13))
+};
+function say(text) {
+  if (!S.speak || S.muted || !("speechSynthesis" in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}☀-➿️‍]/gu, "").replace(/[“”]/g, ""));
+    u.rate = 0.95; u.pitch = 1.15; speechSynthesis.speak(u);
+  } catch {}
+}
+
+/* ================= CONFETTI ================= */
+const cv = $("confetti"), cx = cv.getContext("2d");
+let bits = [], confettiOn = false;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const HEX = ["#ff6fa8", "#ffd23f", "#3ee6b5", "#4cc3ff", "#ff8a3d", "#fff4e3"];
+function confetti(n = 160) {
+  if (reduceMotion) return;
+  cv.width = innerWidth; cv.height = innerHeight;
+  for (let i = 0; i < n; i++) bits.push({ x: Math.random() * cv.width, y: -20 - Math.random() * cv.height * 0.5, vx: (Math.random() - .5) * 4, vy: 2 + Math.random() * 4, r: Math.random() * 6.28, vr: (Math.random() - .5) * .3, w: 6 + Math.random() * 8, h: 10 + Math.random() * 10, c: HEX[i % HEX.length] });
+  if (!confettiOn) { confettiOn = true; requestAnimationFrame(drawConfetti); }
+}
+function drawConfetti() {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  bits = bits.filter(b => b.y < cv.height + 30);
+  for (const b of bits) { b.x += b.vx; b.y += b.vy; b.vy += 0.05; b.r += b.vr; cx.save(); cx.translate(b.x, b.y); cx.rotate(b.r); cx.fillStyle = b.c; cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); cx.restore(); }
+  if (bits.length) requestAnimationFrame(drawConfetti); else { confettiOn = false; cx.clearRect(0, 0, cv.width, cv.height); }
+}
+
+/* ================= HELPERS ================= */
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const activeIdx = () => S.players.map((p, i) => i).filter(i => S.after === "in" || !S.players[i].done);
+function playerColor(i) { return COLORS[i % COLORS.length]; }
+
+/* ================= SETUP SCREEN ================= */
+function renderSetup() {
+  document.querySelectorAll("[data-count]").forEach(b => b.textContent = poolIds(b.dataset.count).length);
+  document.querySelectorAll("#modeChoices .choice").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === S.mode));
+  document.querySelectorAll("#styleChoices .choice").forEach(b => b.setAttribute("aria-pressed", b.dataset.style === S.style));
+  document.querySelectorAll("#afterSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.after === S.after));
+  document.querySelectorAll("#speakSeg button").forEach(b => b.setAttribute("aria-pressed", (b.dataset.speak === "on") === S.speak));
+  document.querySelectorAll("#timerSeg button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.timer === S.timer));
+  $("starInput").value = S.star;
+  const screenStyle = S.style === "screen";
+  $("playersField").hidden = !screenStyle;
+  $("afterField").hidden = !screenStyle;
+  const chips = $("chips"); chips.replaceChildren();
+  S.players.forEach((p, i) => {
+    const c = el("span", "chip"); c.style.background = playerColor(i);
+    c.append(p.name);
+    const x = el("button", "", "×"); x.type = "button"; x.setAttribute("aria-label", "Remove " + p.name);
+    x.onclick = () => { S.players.splice(i, 1); S.examples = false; persist(); renderSetup(); };
+    c.append(x); chips.append(c);
+  });
+  $("playerCount").textContent = "(" + S.players.length + ")";
+  $("exampleHint").hidden = !S.examples || !S.players.length;
+  const ok = !screenStyle || S.players.length >= 2;
+  $("startBtn").disabled = !ok;
+  $("startHint").textContent = ok ? (screenStyle ? "Tip: plug a laptop into the TV and press Full screen." : "Spin your real pen, then tap a card on the TV.") : "Add at least 2 players to start.";
+  $("heroLine").textContent = S.star
+    ? "Happy Birthday, " + S.star + "! The pen picks a player, the player picks a mystery card, and everyone watches the show."
+    : "A birthday party game. The pen picks a player, the player picks a mystery card, and everyone watches the show.";
+}
+function addName() {
+  const v = $("nameInput").value.trim(); if (!v) return;
+  if (S.examples) { S.players = []; S.examples = false; }
+  if (S.players.length >= 24) { toast("24 players is the most the circle can fit."); return; }
+  S.players.push({ name: v, done: false }); $("nameInput").value = ""; persist(); renderSetup(); $("nameInput").focus();
+}
+$("addName").onclick = addName;
+$("nameInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addName(); } });
+$("clearNames").onclick = () => { S.players = []; S.examples = false; persist(); renderSetup(); $("nameInput").focus(); };
+$("starInput").addEventListener("input", e => { S.star = e.target.value.trim(); persist(); renderSetup(); });
+$("modeChoices").onclick = e => { const b = e.target.closest("[data-mode]"); if (b) { S.mode = b.dataset.mode; persist(); renderSetup(); } };
+$("styleChoices").onclick = e => { const b = e.target.closest("[data-style]"); if (b) { S.style = b.dataset.style; persist(); renderSetup(); } };
+$("afterSeg").onclick = e => { const b = e.target.closest("button"); if (b) { S.after = b.dataset.after; persist(); renderSetup(); } };
+$("speakSeg").onclick = e => { const b = e.target.closest("button"); if (b) { S.speak = b.dataset.speak === "on"; persist(); renderSetup(); } };
+$("timerSeg").onclick = e => { const b = e.target.closest("button"); if (b) { S.timer = +b.dataset.timer; persist(); renderSetup(); } };
+$("setupForm").addEventListener("submit", e => { e.preventDefault(); startGame(); });
+
+/* ================= GAME FLOW ================= */
+function show(which) {
+  $("setup").hidden = which !== "setup";
+  $("game").hidden = which === "setup";
+  $("playArea").hidden = which !== "play";
+  $("winner").hidden = which !== "winner";
+}
+function startGame() {
+  audio();
+  S.players.forEach(p => p.done = false);
+  persist(); buildDeck(); updateDeckPill();
+  $("modePill").textContent = MODE_NAMES[S.mode];
+  $("bdayTag").textContent = S.star ? "Happy Birthday, " + S.star + "!" : "";
+  $("soundBtn").textContent = S.muted ? "Sound off" : "Sound on";
+  currentIdx = null; show("play");
+  try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch {}
+  if (S.style === "real") { $("side").hidden = true; openCards(); }
+  else { $("side").hidden = false; toSpin(); }
+}
+function toSpin() {
+  phase = "spin"; currentIdx = null;
+  $("arena").hidden = false; $("cardsView").hidden = true;
+  renderArena(); renderDone();
+  const c = $("callout"); c.replaceChildren();
+  const rem = activeIdx().length;
+  c.append(el("h3", "", "Who's next?"));
+  c.append(el("p", "", rem + " player" + (rem === 1 ? "" : "s") + " in the circle. Spin the pen!"));
+  const b = el("button", "btn go big", "Spin!"); b.type = "button"; b.id = "spinBtn"; b.onclick = spin;
+  c.append(b); c.append(keysHint("Press <kbd>Space</kbd> to spin"));
+  b.focus();
+}
+function keysHint(html) { const p = el("p", "keys"); p.innerHTML = html; return p; }
+
+function renderArena() {
+  const arena = $("arena");
+  arena.querySelectorAll(".seat").forEach(s => s.remove());
+  const idx = activeIdx(); const n = idx.length;
+  const size = n > 16 ? 0.85 : n > 10 ? 1 : 1.25;
+  idx.forEach((pi, k) => {
+    const a = (k / n) * Math.PI * 2;
+    const s = el("div", "seat", S.players[pi].name);
+    s.style.left = (50 + 43 * Math.sin(a)) + "%";
+    s.style.top = (50 - 43 * Math.cos(a)) + "%";
+    s.style.background = playerColor(pi);
+    s.style.fontSize = size + "rem";
+    s.dataset.slot = k; s.dataset.pi = pi;
+    arena.append(s);
+  });
+  setPen(rot);
+}
+function setPen(r) { $("pen").style.transform = "rotate(" + r + "deg)"; }
+function light(slot, cls = "lit") {
+  $("arena").querySelectorAll(".seat").forEach(s => s.classList.toggle(cls, +s.dataset.slot === slot));
+}
+function renderDone() {
+  const box = $("doneChips"); box.replaceChildren();
+  const done = S.players.map((p, i) => [p, i]).filter(([p]) => p.done);
+  $("starsBox").hidden = S.after === "in";
+  if (!done.length) { box.append(el("span", "hint", "Nobody yet. Who will be first?")); return; }
+  done.forEach(([p, i]) => { const c = el("span", "chip", "⭐ " + p.name); c.style.background = playerColor(i); c.style.paddingRight = "0.85em"; box.append(c); });
+}
+
+function spin() {
+  if (spinning || phase !== "spin") return;
+  const idx = activeIdx(); const n = idx.length; if (n < 1) return;
+  audio(); spinning = true; phase = "spinning";
+  const btn = $("spinBtn"); if (btn) btn.disabled = true;
+  const t = Math.floor(Math.random() * n);
+  const step = 360 / n;
+  const target = t * step + (Math.random() - 0.5) * step * 0.45;
+  const start = rot;
+  const delta = ((target - start) % 360 + 360) % 360;
+  const end = start + 360 * (4 + Math.floor(Math.random() * 3)) + delta;
+  const dur = reduceMotion ? 900 : 4300 + Math.random() * 1500;
+  const t0 = performance.now(); let last = -1;
+  function frame(now) {
+    const p = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 4);
+    const r = start + (end - start) * e;
+    setPen(r);
+    const slot = Math.round((((r % 360) + 360) % 360) / step) % n;
+    if (slot !== last) { last = slot; light(slot); sfx.tick(); }
+    if (p < 1) requestAnimationFrame(frame);
+    else { rot = end % 360; setPen(rot); spinning = false; landed(t, idx[t]); }
+  }
+  requestAnimationFrame(frame);
+}
+function landed(slot, pi) {
+  phase = "landed"; currentIdx = pi;
+  light(-1); light(slot, "chosen");
+  sfx.land(); confetti(60);
+  const name = S.players[pi].name;
+  const c = $("callout"); c.replaceChildren();
+  const h = el("h3"); h.append("The pen picked ", el("span", "who", name), "!");
+  c.append(h, el("p", "", "Come up and choose a mystery card."));
+  const b = el("button", "btn pink big", "Pick a card"); b.type = "button"; b.onclick = openCards;
+  c.append(b, keysHint("<kbd>Space</kbd> to pick"));
+  b.focus();
+  say(name + ", the pen picked you! Pick a mystery card.");
+}
+function lastStanding(pi) {
+  currentIdx = pi; phase = "landed";
+  rot = 0; renderArena(); light(0, "chosen");
+  const name = S.players[pi].name;
+  const c = $("callout"); c.replaceChildren();
+  const h = el("h3"); h.append("Last star standing: ", el("span", "who", name), "!");
+  c.append(h, el("p", "", "No spin needed. Here comes your grand finale card!"));
+  const b = el("button", "btn pink big", "Grand finale card"); b.type = "button"; b.onclick = openCards;
+  c.append(b); b.focus();
+  sfx.land(); say(name + ", you are the last star standing! Pick your grand finale card.");
+}
+
+function openCards() {
+  phase = "cards";
+  $("arena").hidden = true; $("cardsView").hidden = false;
+  const title = $("cardsTitle"); title.replaceChildren();
+  if (currentIdx != null) title.append(el("span", "who", S.players[currentIdx].name), ", pick a mystery card!");
+  else title.append("Where did the pen point? Pick a mystery card!");
+  const g = $("grid"); g.replaceChildren();
+  for (let i = 0; i < 12; i++) {
+    const b = el("button", "card", "?"); b.type = "button";
+    b.style.background = COLORS[(i * 2 + Math.floor(i / 6)) % COLORS.length];
+    b.setAttribute("aria-label", "Mystery card " + (i + 1));
+    b.onclick = () => pickCard(b);
+    g.append(b);
+  }
+  g.firstChild.focus();
+}
+function pickCard(b) {
+  if (phase !== "cards") return;
+  phase = "task"; b.classList.add("flipping"); sfx.flip();
+  setTimeout(() => revealTask(drawTask()), reduceMotion ? 0 : 380);
+}
+function revealTask(task, swapped) {
+  currentTask = task; stopTimer();
+  $("taskFor").textContent = currentIdx != null ? S.players[currentIdx].name + ", your task is…" : "Your task is…";
+  $("taskEmoji").textContent = task.emoji;
+  $("taskText").textContent = task.text;
+  $("buddyTag").hidden = true;
+  $("timerBox").hidden = true;
+  $("timerBtn").hidden = !S.timer;
+  $("timerBtn").textContent = "Start " + S.timer + "s timer";
+  $("overlay").hidden = false;
+  $("doneBtn").focus();
+  if (!swapped) confetti(40);
+  say((currentIdx != null ? S.players[currentIdx].name + ". " : "") + task.text);
+}
+function stopTimer() { if (timerHandle) { cancelAnimationFrame(timerHandle); timerHandle = null; } }
+$("timerBtn").onclick = () => {
+  stopTimer(); $("timerBox").hidden = false;
+  const total = S.timer * 1000, t0 = performance.now(); let lastSec = -1;
+  const tickT = now => {
+    const left = Math.max(0, total - (now - t0));
+    const sec = Math.ceil(left / 1000);
+    $("timerNum").textContent = sec + "s";
+    $("timerBar").style.transform = "scaleX(" + (left / total) + ")";
+    if (sec !== lastSec && sec <= 3 && sec > 0) sfx.tick();
+    lastSec = sec;
+    if (left > 0) timerHandle = requestAnimationFrame(tickT);
+    else { timerHandle = null; $("timerNum").textContent = "Time's up!"; sfx.buzz(); }
+  };
+  timerHandle = requestAnimationFrame(tickT);
+};
+$("buddyBtn").onclick = () => { $("buddyTag").hidden = false; say("Bring a buddy! Pick someone to do it with you."); };
+$("readBtn").onclick = () => { if (!currentTask) return; const was = S.speak; S.speak = true; say(currentTask.text); S.speak = was; };
+$("swapBtn").onclick = () => { sfx.flip(); revealTask(drawTask(), true); };
+$("doneBtn").onclick = finishTask;
+
+function finishTask() {
+  if (phase !== "task") return;
+  stopTimer(); $("overlay").hidden = true;
+  try { speechSynthesis.cancel(); } catch {}
+  sfx.done(); confetti(140);
+  if (S.style === "real") { openCards(); return; }
+  if (S.after === "out" && currentIdx != null) S.players[currentIdx].done = true;
+  persist();
+  const rem = activeIdx();
+  if (S.after === "out" && rem.length === 0) return winner();
+  if (S.after === "out" && rem.length === 1) { $("arena").hidden = false; $("cardsView").hidden = true; renderDone(); return lastStanding(rem[0]); }
+  toSpin();
+}
+function winner() {
+  phase = "winner"; show("winner");
+  $("winTitle").textContent = "Everyone's a Superstar!";
+  $("winLine").textContent = S.star ? "Happy Birthday, " + S.star + "! What a show." : "What a show. Big round of applause!";
+  const w = $("winChips"); w.replaceChildren();
+  S.players.forEach((p, i) => { const c = el("span", "chip", "⭐ " + p.name); c.style.background = playerColor(i); c.style.paddingRight = "0.85em"; w.append(c); });
+  sfx.win(); confetti(300); setTimeout(() => confetti(200), 900);
+  say(S.star ? "Happy birthday " + S.star + "! Everyone is a superstar!" : "Everyone is a superstar!");
+  $("againBtn").focus();
+}
+$("againBtn").onclick = startGame;
+$("winSetupBtn").onclick = goSetup;
+$("setupBtn").onclick = goSetup;
+function goSetup() { stopTimer(); $("overlay").hidden = true; phase = "setup"; show("setup"); renderSetup(); }
+$("soundBtn").onclick = () => { S.muted = !S.muted; persist(); $("soundBtn").textContent = S.muted ? "Sound off" : "Sound on"; if (S.muted) try { speechSynthesis.cancel(); } catch {} };
+$("fsBtn").onclick = () => {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => toast("Full screen isn't available here. Try your browser's F11 key."));
+  } catch { toast("Full screen isn't available here. Try your browser's F11 key."); }
+};
+
+/* ================= KEYBOARD / TV REMOTE ================= */
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.target.tagName === "BUTTON" && (e.key === " " || e.key === "Enter")) return;
+  if (e.key === " " || e.key === "Spacebar") {
+    if (phase === "spin") { e.preventDefault(); spin(); }
+    else if (phase === "landed") { e.preventDefault(); openCards(); }
+  }
+  if (phase === "cards" && e.key.startsWith("Arrow")) {
+    const cards = [...$("grid").children];
+    const i = cards.indexOf(document.activeElement);
+    const cols = getComputedStyle($("grid")).gridTemplateColumns.split(" ").length;
+    const move = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key];
+    const next = cards[Math.min(cards.length - 1, Math.max(0, (i < 0 ? 0 : i + move)))];
+    if (next) { e.preventDefault(); next.focus(); }
+  }
+});
+
+/* ================= BOOT ================= */
+window.claude?.hot?.snapshot?.(() => ({ S, used: [...used] }));
+function boot(data) {
+  if (data && data.S) { Object.assign(S, data.S); used = new Set(data.used || []); }
+  show("setup"); renderSetup();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+</script>
+
+</body>
+</html>
