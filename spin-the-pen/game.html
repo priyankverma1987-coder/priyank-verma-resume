@@ -1,4 +1,4 @@
-<title>Spin the Pen Party</title>
+<title>Spin &amp; Smile</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -104,6 +104,7 @@ h1, h2, h3 { font-family: var(--display); font-weight: 800; line-height: 1.05; m
 .hero { display: grid; gap: 1rem; padding-top: 1rem; }
 .hero h1 { font-size: clamp(3rem, 6vw, 6.5rem); letter-spacing: -0.01em; }
 .hero h1 .pen-word { color: var(--hl); display: inline-block; transform: rotate(-4deg); }
+.hero .owner { font-family: var(--display); font-weight: 800; font-size: clamp(1.6rem, 2.6vw, 2.6rem); color: var(--hl-2); line-height: 1; margin-bottom: -0.6rem; max-width: none; }
 .hero p { margin: 0; max-width: 32ch; color: var(--ink-soft); font-size: 1.1rem; }
 .how { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
 .how li { display: flex; gap: 0.7rem; align-items: baseline; }
@@ -264,7 +265,8 @@ kbd { background: var(--bg); border-radius: 0.35em; padding: 0.05em 0.45em; font
       <div class="sprinkles" aria-hidden="true">
         <span class="sprinkle" style="background:var(--pink)"></span><span class="sprinkle" style="background:var(--yellow)"></span><span class="sprinkle" style="background:var(--mint)"></span><span class="sprinkle" style="background:var(--sky)"></span><span class="sprinkle" style="background:var(--orange)"></span>
       </div>
-      <h1>Spin the <span class="pen-word">Pen!</span></h1>
+      <p class="owner" id="heroOwner" hidden></p>
+      <h1>Spin &amp; <span class="pen-word">Smile!</span></h1>
       <p id="heroLine"></p>
       <ol class="how">
         <li><b>1</b><span>Spin the pen, the wheel or the lights on the TV.</span></li>
@@ -331,7 +333,7 @@ kbd { background: var(--bg); border-radius: 0.35em; padding: 0.05em 0.45em; font
   <!-- GAME TOP BAR -->
   <section id="game" hidden aria-label="Game controls">
     <div class="topbar">
-      <h2>Spin the Pen <small id="bdayTag"></small></h2>
+      <h2><span id="gameName">Spin &amp; Smile</span> <small id="bdayTag"></small></h2>
       <span class="pill" id="modePill"></span>
       <span class="pill" id="deckPill"></span>
       <button class="btn icon-btn" id="drawerBtn" type="button">Players &amp; settings</button>
@@ -622,6 +624,7 @@ const $ = id => document.getElementById(id);
 const active = () => S.players.filter(p => S.after === "in" || !p.done);
 const color = p => COLORS[p.c % COLORS.length];
 const podiumGame = () => S.after === "out" && S.players.length > 8;
+const gameName = () => (S.star ? S.star + "'s " : "") + "Spin & Smile";
 function applyLook() { document.documentElement.dataset.look = S.look; }
 
 /* ================= DECK (no repeats) ================= */
@@ -805,6 +808,7 @@ function renderSetup() {
     : S.after === "out" && S.players.length > 8 ? "9 or more players: the last 3 standing get a podium."
     : S.after === "out" ? "The last player standing is the Champion."
     : "Everyone stays in. Play as long as you like.";
+  $("heroOwner").hidden = !S.star; $("heroOwner").textContent = S.star ? S.star + "'s" : "";
   $("heroLine").textContent = (S.star ? "Happy Birthday, " + S.star + "! " : "A birthday party game. ") + "The TV picks a player, the player picks a mystery card, and everyone watches the show.";
 }
 function setupAdd() {
@@ -833,10 +837,12 @@ function startGame() {
   audio();
   S.players.forEach(p => { p.done = false; delete p.out; }); outCount = 0; lastOut = null;
   persist(); buildDeck();
+  $("gameName").textContent = gameName();
   $("bdayTag").textContent = S.star ? "Happy Birthday, " + S.star + "!" : "";
   syncAudioButtons();
   cur = null; show("play"); phase = "spin";
   startMusic();
+  say("Welcome to " + gameName().replace("&", "and") + "! Let's play!");
   try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch {}
   resume();
 }
